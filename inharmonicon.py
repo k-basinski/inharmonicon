@@ -158,10 +158,11 @@ class Harmonics:
 class Sound:
     def __init__(
             self,
-            f: float | np.ndarray | Harmonics,
+            f: float | np.ndarray | Harmonics | None,
             length: float,
             amp: float = 1.0,
             fs: int = 48000,
+            stereo: bool = True,
     ):
         """Make a sound.
 
@@ -193,9 +194,19 @@ class Sound:
             self.generate_complex_tone(f, phases="random")
             self.apply_tapers()
 
+        # elif f is a Harmonics object
         elif isinstance(f, Harmonics):
             self.generate_complex_tone(f.series, phases="random")
             self.apply_tapers()
+
+        # elif f is None, generate silence
+        elif f is None:
+            self.generate_silence()
+
+        if stereo:
+            self.stereoize()
+
+
 
     def generate_pure_tone(
             self, f: float, amp: float = 1.0, phase: float = 0
@@ -335,8 +346,68 @@ class Sound:
         # apply
         self.sound = sosfilt(sos, self.sound)
 
-    def adjust_volume(self, volume: float):
-        pass
+    def adjust_volume(self, new_volume: float):
+        new_volume_from_db = self.db_to_amplitude(new_volume)
+        self.sound *= new_volume_from_db
+
+    def db_to_amplitude(self, db: float) -> float:
+        """Calculate the amplitude coefficient based on provided value in dB.
+
+        Args:
+            db (float): Amplitude value in dB
+
+        Returns:
+             amplitude (float): Amplitude coefficient.
+        """
+        amplitude = 10 ** (db / 20)
+        return amplitude
+
+    def amplitude_to_db(self, amplitude: float) -> float:
+        """Convert the amplitude coefficient to dB.
+
+        Args:
+            amplitude (float): Amplitude coefficient.
+
+        Returns:
+            dB (float): Amplitude value in dB.
+        """
+        db = 20 * np.log10(amplitude)
+        return db
+
+    def is_mono(self) -> bool:
+        """Check if sound is in stereo (is a 2d-array).
+
+        Returns:
+            bool: True if sound is in mono.
+        """
+        if self.sound.ndim == 1:
+            return True
+        else:
+            return False
+
+    def stereoize(self):
+        if self.is_mono():
+            self.sound = np.stack([self.sound, self.sound]).T
+        else:
+            raise("Sound is already in stereo, can't stereoize.")
+
+    def apply_itd(self, itd: float, side: str):
+        # Check if sound is stereo. If not, make it.
+        if self.is_mono():
+            self.stereoize()
+
+        # calculate the number of samples to shift
+        itd_seconds = itd / 1e6
+        shift = int(itd_seconds  * self.fs)
+        if side == "left":
+            left = np.concatenate([np.zeros(shift), self.sound[:,0]])
+            right = np.concatenate([self.sound[:,1], np.zeros(shift)])
+        elif side == "right":
+            left = np.concatenate([self.sound[:,0], np.zeros(shift)])
+            right = np.concatenate([np.zeros(shift), self.sound[:,1]])
+
+        self.sound = np.stack([right, left]).T
+
 
     def save(self, fname: str):
         """Save sound under a given filename. Uses soundfile under the hood.
@@ -345,3 +416,49 @@ class Sound:
             fname (str): Filename with *.wav extension.
         """
         sf.write(file=fname, data=self.sound, samplerate=self.fs)
+
+    def get_length(self, unit='seconds'):
+        """Get the length of the sound.
+        
+        Args:
+            unit (str, optional): Return length in seconds or samples. Defaults to "seconds".
+        """
+        length_samples = self.sound.shape[0]
+        if unit == "samples":
+            return length_samples
+        else:
+            return length_samples / self.fs
+
+    def generate_silence(self):
+        self.sound = np.zeros_like(self.t)
+
+
+class Oddballs:
+    def __init__(self, stim_list, ioi, fs=48000):
+        # set sample rate
+        self.fs = fs
+
+        # calculate how many samples per onset interval
+        ioi_samples = int(ioi * fs)
+
+        # make empty list of sounds
+        sounds = []
+        # glue up sound and silence
+        for i, stim in enumerate(stim_list):
+            sound = np.zeros((ioi_samples, 2) )
+            sound[:stim.get_length('samples')] = stim.sound
+            sounds.append(sound)
+
+        # make stimulus train
+        self.train = np.concatenate(sounds)
+
+
+    def play(self):
+        """Play the sound using default system audio interface.
+
+        This method uses sounddevice. Use only for interactive sessions and for small scripts. It cannot be used for multiple overlapping playbacks.
+        """
+        sd.play(self.train, self.fs)
+
+
+
