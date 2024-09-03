@@ -344,7 +344,7 @@ class Sound:
         # design a filter
         sos = butter(order, freq, type, fs=self.fs, output="sos")
         # apply
-        self.sound = sosfilt(sos, self.sound)
+        self.sound = sosfilt(sos, self.sound, axis=0)
 
     def adjust_volume(self, new_volume: float):
         new_volume_from_db = self.db_to_amplitude(new_volume)
