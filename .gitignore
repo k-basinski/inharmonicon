@@ -1,0 +1,3 @@
+# ignore anything named soundpool
+/sound_pool*
+

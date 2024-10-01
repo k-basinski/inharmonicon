@@ -460,5 +460,14 @@ class Oddballs:
         """
         sd.play(self.train, self.fs)
 
+    
+    def save(self, fname: str):
+        """Save oddball sequence under a given filename. Uses soundfile under the hood.
+
+        Args:
+            fname (str): Filename with *.wav extension.
+        """
+        sf.write(file=fname, data=self.train, samplerate=self.fs)
+
 
 
