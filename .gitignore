@@ -1,3 +1,7 @@
 # ignore anything named soundpool
 /sound_pool*
-
+/parametric_modulation.py
+/multifeature*
+/test.py
+.DS_Store
+/inharmonicon_old.py

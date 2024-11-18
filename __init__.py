@@ -266,7 +266,7 @@ class Sound:
     def generate_complex_tone(
             self,
             harmonics: npt.ArrayLike,
-            amps: npt.ArrayLike = None,
+            amps: npt.ArrayLike | None = None,
             phases: npt.ArrayLike | int | str = 0,
     ):
         """Generate a complex tone.
@@ -435,6 +435,13 @@ class Sound:
 
 class Oddballs:
     def __init__(self, stim_list, ioi, fs=48000):
+        """This is a helper class to make simple sequences out of the sounds and then save or play them. 
+
+        Args:
+            stim_list (ArrayLike): List of Sounds to build the sequence from.
+            ioi (float): Inter-onset interval in seconds.
+            fs (int, optional): Sample rate. Defaults to 48000.
+        """
         # set sample rate
         self.fs = fs
 
