@@ -258,7 +258,7 @@ class Sound:
         # self.sound = self.sound * scale
         # measure the loudness first 
         meter = pyln.Meter(self.fs)  # create BS.1770 meter
-        loudness = meter.integrated_loudness(np.tile(self.sound, (10, 1)))
+        loudness = meter.integrated_loudness(np.tile(self.sound, 10))
 
         # # loudness normalize audio to -12 dB LUFS
         self.sound = pyln.normalize.loudness(self.sound, loudness, -12.0)
